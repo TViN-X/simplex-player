@@ -1,0 +1,19 @@
+{
+  "name": "simplex-player",
+  "productName": "Simplex player",
+  "version": "1.1.0",
+  "description": "Минималистичный локальный музыкальный плеер с drag & drop папок",
+  "main": "electron/main.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "dependencies": {
+    "music-metadata": "^13.0.0"
+  },
+  "devDependencies": {
+    "electron": "^45.5.0"
+  }
+}
