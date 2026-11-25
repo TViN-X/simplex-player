@@ -62,7 +62,7 @@ jobs:
         with:
           name: Simplex player ${{ github.ref_name }}
           body: |
-            Первые сборки Simplex player для Windows, macOS и Linux.
+            Simplex player ${{ github.ref_name }} для Windows, macOS и Linux.
 
             - **Windows** — установщик и portable
             - **macOS** — универсальный `.dmg` для Intel и Apple Silicon

@@ -1,7 +1,7 @@
 {
   "name": "simplex-player",
   "productName": "Simplex player",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Минималистичный локальный музыкальный плеер с drag & drop папок",
   "main": "electron/main.js",
   "author": {
