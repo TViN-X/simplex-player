@@ -68,5 +68,5 @@ jobs:
             - **macOS** — универсальный `.dmg` для Intel и Apple Silicon
             - **Linux** — `.AppImage` и `.deb`
 
-            Сборки не подписаны: Windows SmartScreen и macOS Gatekeeper могут показать предупреждение.
+            Сборки не подписаны. Windows SmartScreen: «Подробнее» → «Выполнить в любом случае». macOS Gatekeeper: правый клик по приложению → «Открыть».
           files: artifacts/**/*
