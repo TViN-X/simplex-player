@@ -1352,11 +1352,19 @@ body.is-playing .status-dot {
   width: 62px;
   height: 62px;
   padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #09090c;
+  cursor: pointer;
+}
+
+.play-disc {
+  position: absolute;
+  inset: 0;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 50%;
   background: #f4f2f8;
-  color: #09090c;
-  cursor: pointer;
   box-shadow:
     0 12px 32px rgba(0, 0, 0, 0.34),
     0 0 34px rgb(var(--accent-rgb) / 0.16),
@@ -1364,7 +1372,7 @@ body.is-playing .status-dot {
   transition: transform 0.25s var(--ease-out), background 0.2s, box-shadow 0.25s;
 }
 
-.play-btn:hover {
+.play-btn:hover .play-disc {
   background: #fff;
   transform: scale(1.055);
   box-shadow:
@@ -1373,7 +1381,7 @@ body.is-playing .status-dot {
     inset 0 1px 0 #fff;
 }
 
-.play-btn:active {
+.play-btn:active .play-disc {
   transform: scale(0.96);
 }
 
