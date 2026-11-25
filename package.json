@@ -4,16 +4,83 @@
   "version": "1.1.0",
   "description": "Минималистичный локальный музыкальный плеер с drag & drop папок",
   "main": "electron/main.js",
-  "author": "",
+  "author": {
+    "name": "TViN-X",
+    "email": "tvinnn@gmail.com"
+  },
   "license": "MIT",
+  "homepage": "https://github.com/TViN-X/simplex-player",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TViN-X/simplex-player.git"
+  },
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --dev"
+    "dev": "electron . --dev",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
   },
   "dependencies": {
     "music-metadata": "^13.0.0"
   },
   "devDependencies": {
-    "electron": "^45.5.0"
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.simplex.player",
+    "productName": "Simplex player",
+    "copyright": "Copyright © 2026 TViN-X",
+    "asar": true,
+    "files": [
+      "app/**/*",
+      "electron/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Simplex player",
+      "artifactName": "Simplex-player-${version}-setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "Simplex-player-${version}-portable.${ext}"
+    },
+    "mac": {
+      "icon": "assets/icon.png",
+      "category": "public.app-category.music",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "target": [
+        { "target": "dmg", "arch": ["universal"] },
+        { "target": "zip", "arch": ["universal"] }
+      ],
+      "artifactName": "Simplex-player-${version}-mac-${arch}.${ext}"
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "category": "AudioVideo",
+      "maintainer": "TViN-X <tvinnn@gmail.com>",
+      "synopsis": "Минималистичный локальный музыкальный плеер",
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] }
+      ],
+      "artifactName": "Simplex-player-${version}-linux-${arch}.${ext}"
+    }
   }
 }
