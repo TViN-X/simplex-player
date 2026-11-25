@@ -150,29 +150,14 @@ button,
 }
 
 .brand-mark {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
+  display: block;
+  flex: none;
   width: 33px;
   height: 33px;
-  border-radius: 10px;
-  background: linear-gradient(145deg, #c3b1ff 0%, #9a7cf7 44%, #f294c2 100%);
-  box-shadow: 0 4px 16px rgb(var(--accent-rgb) / 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  filter: drop-shadow(0 4px 12px rgb(var(--accent-rgb) / 0.3));
+  -webkit-user-drag: none;
+  user-select: none;
 }
-
-.brand-mark i {
-  display: block;
-  width: 2.5px;
-  border-radius: 3px;
-  background: #121016;
-  transform-origin: 50% 50%;
-}
-
-.brand-mark i:nth-child(1) { height: 9px; opacity: 0.72; }
-.brand-mark i:nth-child(2) { height: 17px; }
-.brand-mark i:nth-child(3) { height: 11px; opacity: 0.85; }
 
 .brand-lockup {
   display: flex;
@@ -2488,28 +2473,11 @@ body.is-playing .mini-play .icon-pause {
 }
 
 .boot-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  width: 48px;
-  height: 48px;
-  border-radius: 15px;
-  background: linear-gradient(145deg, #c3b1ff, #9878f5 46%, #f293c2);
-  box-shadow: 0 12px 38px rgb(var(--accent-rgb) / 0.22);
+  width: 60px;
+  height: 60px;
+  filter: drop-shadow(0 14px 38px rgb(var(--accent-rgb) / 0.26));
+  animation: boot-pulse 1.8s ease-in-out infinite;
 }
-
-.boot-mark span {
-  width: 3px;
-  border-radius: 3px;
-  background: #100e15;
-  animation: boot-bars 1.05s ease-in-out infinite;
-}
-
-.boot-mark span:nth-child(1) { height: 8px; animation-delay: -0.4s; }
-.boot-mark span:nth-child(2) { height: 18px; animation-delay: -0.2s; }
-.boot-mark span:nth-child(3) { height: 13px; animation-delay: -0.55s; }
-.boot-mark span:nth-child(4) { height: 7px; animation-delay: -0.1s; }
 
 .boot-word {
   color: #868590;
@@ -2865,9 +2833,9 @@ input[type="range"]:focus-visible {
   to { opacity: 0; transform: translateY(6px) scale(0.98); }
 }
 
-@keyframes boot-bars {
-  0%, 100% { transform: scaleY(0.55); opacity: 0.65; }
-  50% { transform: scaleY(1); opacity: 1; }
+@keyframes boot-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.045); opacity: 1; }
 }
 
 @keyframes title-marquee {
