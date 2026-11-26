@@ -9,7 +9,8 @@ const DEFAULT_SETTINGS = Object.freeze({
   shuffle: false,
   repeat: 'off',
   lastTrackId: null,
-  lastTime: 0
+  lastTime: 0,
+  lastPlaylistId: null
 });
 
 const REPEAT_MODES = new Set(['off', 'all', 'one']);
@@ -35,6 +36,9 @@ function sanitize(patch, current) {
     }
     if (Number.isFinite(Number(patch.lastTime))) {
       next.lastTime = clamp(Number(patch.lastTime), 0, 24 * 60 * 60);
+    }
+    if (patch.lastPlaylistId === null || typeof patch.lastPlaylistId === 'string') {
+      next.lastPlaylistId = patch.lastPlaylistId || null;
     }
   }
 

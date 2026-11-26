@@ -424,6 +424,28 @@ class MusicLibrary {
     }
   }
 
+  async removeMany(ids) {
+    const targets = new Set(Array.isArray(ids) ? ids : []);
+    if (!targets.size) return { tracks: this.serialize(), removed: 0 };
+
+    const kept = [];
+    let removed = 0;
+    for (const entry of this.entries) {
+      if (targets.has(entry.id)) {
+        delete this.cache[pathKey(entry.path)];
+        removed += 1;
+      } else {
+        kept.push(entry);
+      }
+    }
+
+    if (!removed) return { tracks: this.serialize(), removed: 0 };
+    this.entries = kept;
+    this.refreshAllowedPaths();
+    await this.save(true);
+    return { tracks: this.serialize(), removed };
+  }
+
   async remove(id) {
     const index = this.entries.findIndex((entry) => entry.id === id);
     if (index === -1) return { tracks: this.serialize(), removed: false };

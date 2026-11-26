@@ -8,6 +8,7 @@ const {
 } = require('electron');
 const { MusicLibrary } = require('./library');
 const { SettingsStore } = require('./settings');
+const { PlaylistStore } = require('./playlists');
 const { registerAppScheme, installAppProtocol } = require('./protocol');
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -24,6 +25,7 @@ const MIN_WINDOW = { width: 920, height: 640 };
 
 let mainWindow = null;
 let library = null;
+let playlists = null;
 let settings = null;
 let initPromise = null;
 let windowStatePath = null;
@@ -217,6 +219,18 @@ function sendScanProgress(sender, payload) {
   }
 }
 
+async function pruneOrphanTracks() {
+  const referenced = new Set();
+  for (const playlist of playlists.serialize()) {
+    for (const trackId of playlist.trackIds) referenced.add(trackId);
+  }
+  const orphans = library.serialize()
+    .filter((track) => !referenced.has(track.id))
+    .map((track) => track.id);
+  if (orphans.length) await library.removeMany(orphans);
+  return library.serialize();
+}
+
 function createWindow() {
   const saved = getWindowState();
   miniPrefs = { bounds: saved.miniBounds, onTop: saved.miniOnTop };
@@ -310,6 +324,16 @@ function setupIpc() {
         await library.init((payload) => {
           if (mainWindow) sendScanProgress(mainWindow.webContents, payload);
         });
+        await playlists.load();
+        const existingTracks = library.serialize();
+        if (!playlists.fileExisted && existingTracks.length) {
+          await playlists.create({
+            name: 'Default',
+            trackIds: existingTracks.map((track) => track.id)
+          });
+        } else if (playlists.fileExisted) {
+          await pruneOrphanTracks();
+        }
         if (mainWindow) mainWindow.setProgressBar(-1);
       })().catch((error) => {
         initPromise = null;
@@ -323,6 +347,7 @@ function setupIpc() {
     // Read live state on every call so reloaded or recreated windows are current.
     return {
       tracks: library.serialize(),
+      playlists: playlists.serialize(),
       settings: settings.get(),
       platform: process.platform,
       version: app.getVersion()
@@ -377,11 +402,57 @@ function setupIpc() {
   });
 
   ipcMain.handle('library:remove', async (_event, id) => {
-    return library.remove(String(id));
+    const result = await library.remove(String(id));
+    await playlists.dropTrack(String(id));
+    return { ...result, playlists: playlists.serialize() };
   });
 
   ipcMain.handle('library:clear', async () => {
-    return library.clear();
+    const result = await library.clear();
+    await playlists.dropAllTracks();
+    return { ...result, playlists: playlists.serialize() };
+  });
+
+  ipcMain.handle('playlist:create', async (_event, payload = {}) => {
+    const trackIds = Array.isArray(payload.trackIds)
+      ? payload.trackIds.filter((id) => typeof id === 'string' && library.getTrackById(id))
+      : [];
+    const playlist = await playlists.create({ name: payload.name, trackIds });
+    return { playlist, playlists: playlists.serialize() };
+  });
+
+  ipcMain.handle('playlist:rename', async (_event, payload = {}) => {
+    const playlist = await playlists.rename(String(payload.id || ''), payload.name);
+    if (!playlist) return { error: 'not-found', playlists: playlists.serialize() };
+    return { playlist, playlists: playlists.serialize() };
+  });
+
+  ipcMain.handle('playlist:delete', async (_event, id) => {
+    const removed = await playlists.remove(String(id || ''));
+    const tracks = await pruneOrphanTracks();
+    return { removed, playlists: playlists.serialize(), tracks };
+  });
+
+  ipcMain.handle('playlist:add-tracks', async (_event, payload = {}) => {
+    const trackIds = Array.isArray(payload.trackIds)
+      ? payload.trackIds.filter((id) => typeof id === 'string' && library.getTrackById(id))
+      : [];
+    const playlist = await playlists.addTracks(String(payload.id || ''), trackIds);
+    if (!playlist) return { error: 'not-found', playlists: playlists.serialize() };
+    return { playlist, playlists: playlists.serialize() };
+  });
+
+  ipcMain.handle('playlist:remove-track', async (_event, payload = {}) => {
+    const playlist = await playlists.removeTrack(String(payload.id || ''), String(payload.trackId || ''));
+    if (!playlist) return { error: 'not-found', playlists: playlists.serialize() };
+    const tracks = await pruneOrphanTracks();
+    return { playlist, playlists: playlists.serialize(), tracks };
+  });
+
+  ipcMain.handle('playlist:reorder', async (_event, payload = {}) => {
+    const playlist = await playlists.reorder(String(payload.id || ''), payload.trackIds);
+    if (!playlist) return { error: 'not-found', playlists: playlists.serialize() };
+    return { playlist, playlists: playlists.serialize() };
   });
 
   ipcMain.handle('library:reveal', async (_event, id) => {
@@ -461,6 +532,7 @@ async function bootstrap() {
   windowStatePath = path.join(userDataDir, 'window-state.json');
 
   library = new MusicLibrary(userDataDir);
+  playlists = new PlaylistStore(userDataDir);
   settings = new SettingsStore(userDataDir);
 
   installAppProtocol({
