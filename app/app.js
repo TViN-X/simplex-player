@@ -108,6 +108,17 @@
     dropOverlay: $('#drop-overlay'),
     contextMenu: $('#context-menu'),
     toasts: $('#toasts'),
+    updateModal: $('#update-modal'),
+    updateClose: $('#update-modal-close'),
+    updateLead: $('#update-lead'),
+    updateSub: $('#update-sub'),
+    updateNotes: $('#update-notes'),
+    updateProgress: $('#update-progress'),
+    updateProgressFill: $('#update-progress-fill'),
+    updateProgressText: $('#update-progress-text'),
+    updateText: $('#update-text'),
+    updateLater: $('#update-later'),
+    updateAction: $('#update-action'),
     sortField: $('#sort-field'),
     sortTrigger: $('#sort-trigger'),
     sortValue: $('#sort-value'),
@@ -154,7 +165,8 @@
     mini: false,
     titleToken: 0,
     miniTitleToken: 0,
-    miniSeeking: false
+    miniSeeking: false,
+    update: { info: null, status: 'idle', progress: 0 }
   };
 
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -530,6 +542,142 @@
         toastCount = Math.max(0, toastCount - 1);
       }, 260);
     }, duration);
+  }
+
+  function formatUpdateNotes(notes) {
+    const text = String(notes || '').trim();
+    return text.length > 4000 ? `${text.slice(0, 4000)}…` : text;
+  }
+
+  function openUpdateModal(info) {
+    if (!dom.updateModal) return;
+    state.update = { info, status: 'available', progress: 0 };
+
+    dom.updateLead.textContent = `Доступна версия ${info.version}`;
+    dom.updateSub.textContent = info.mode === 'auto'
+      ? `Сейчас установлена ${info.currentVersion}. Обновление скачается и установится автоматически.`
+      : `${info.reason || 'Обновление выполняется вручную.'} Установлена версия ${info.currentVersion}.`;
+
+    const notes = formatUpdateNotes(info.notes);
+    dom.updateNotes.textContent = notes;
+    dom.updateNotes.hidden = !notes;
+    dom.updateText.textContent = '';
+    dom.updateText.hidden = true;
+    dom.updateProgress.hidden = true;
+    dom.updateProgressFill.style.width = '0%';
+    dom.updateProgressText.textContent = '0%';
+    dom.updateLater.disabled = false;
+    dom.updateAction.disabled = false;
+    dom.updateAction.textContent = info.mode === 'auto' ? 'Скачать обновление' : 'Открыть страницу загрузки';
+    dom.updateModal.hidden = false;
+    requestAnimationFrame(() => dom.updateAction.focus());
+  }
+
+  function closeUpdateModal() {
+    if (!dom.updateModal) return;
+    if (state.update.status === 'downloading') return;
+    dom.updateModal.hidden = true;
+  }
+
+  function setUpdateProgress(percent) {
+    const value = Math.max(0, Math.min(100, Number(percent) || 0));
+    state.update.progress = value;
+    dom.updateProgressFill.style.width = `${value}%`;
+    dom.updateProgressText.textContent = `${Math.round(value)}%`;
+  }
+
+  async function checkForUpdates() {
+    if (!bridge?.checkForUpdates) return;
+    try {
+      const result = await bridge.checkForUpdates();
+      if (result?.status !== 'available' || !result.version) return;
+      openUpdateModal(result);
+    } catch {
+      // Startup checks stay silent; explicit actions report errors in the modal.
+    }
+  }
+
+  async function startUpdateDownload() {
+    const info = state.update.info;
+    if (!info) return;
+
+    if (info.mode !== 'auto') {
+      bridge.openUpdateRelease(info.url).catch(() => {});
+      closeUpdateModal();
+      showToast('Открыли страницу загрузки новой версии');
+      return;
+    }
+
+    state.update.status = 'downloading';
+    dom.updateAction.disabled = true;
+    dom.updateLater.disabled = true;
+    dom.updateProgress.hidden = false;
+    dom.updateText.hidden = true;
+    dom.updateLead.textContent = `Скачиваем версию ${info.version}`;
+    dom.updateSub.textContent = 'Дождитесь окончания загрузки — приложение перезапустится после подтверждения.';
+    setUpdateProgress(0);
+
+    try {
+      const result = await bridge.downloadUpdate();
+      if (result?.status === 'manual') {
+        bridge.openUpdateRelease(result.url).catch(() => {});
+        closeUpdateModal();
+        return;
+      }
+
+      state.update.status = 'downloaded';
+      dom.updateLead.textContent = 'Обновление готово';
+      dom.updateSub.textContent = 'Перезапустите приложение, чтобы применить новую версию.';
+      dom.updateProgress.hidden = true;
+      dom.updateAction.textContent = 'Перезапустить и обновить';
+      dom.updateAction.disabled = false;
+      dom.updateLater.disabled = false;
+    } catch (error) {
+      state.update.status = 'error';
+      dom.updateLead.textContent = 'Не удалось скачать обновление';
+      dom.updateSub.textContent = 'Проверьте подключение к интернету и попробуйте ещё раз.';
+      dom.updateProgress.hidden = true;
+      dom.updateText.textContent = String(error?.message || '');
+      dom.updateText.hidden = !error?.message;
+      dom.updateAction.textContent = 'Попробовать снова';
+      dom.updateAction.disabled = false;
+      dom.updateLater.disabled = false;
+    }
+  }
+
+  function installUpdate() {
+    if (state.update.status !== 'downloaded') return;
+    bridge.installUpdate().catch(() => {});
+  }
+
+  function handleUpdateAction() {
+    if (state.update.status === 'downloaded') {
+      installUpdate();
+      return;
+    }
+    if (state.update.status === 'downloading') return;
+    startUpdateDownload();
+  }
+
+  function handleUpdateEvent(payload) {
+    if (!payload || state.update.status !== 'downloading') return;
+
+    if (payload.type === 'progress') {
+      setUpdateProgress(payload.percent);
+      return;
+    }
+
+    if (payload.type === 'error') {
+      state.update.status = 'error';
+      dom.updateLead.textContent = 'Не удалось скачать обновление';
+      dom.updateSub.textContent = 'Попробуйте ещё раз или скачайте новую версию вручную.';
+      dom.updateProgress.hidden = true;
+      dom.updateText.textContent = payload.message || '';
+      dom.updateText.hidden = !payload.message;
+      dom.updateAction.textContent = 'Попробовать снова';
+      dom.updateAction.disabled = false;
+      dom.updateLater.disabled = false;
+    }
   }
 
   function settingsSnapshot() {
@@ -2567,6 +2715,13 @@
       if (event.target === dom.playlistModal) closePlaylistModal();
     });
 
+    dom.updateClose?.addEventListener('click', closeUpdateModal);
+    dom.updateLater?.addEventListener('click', closeUpdateModal);
+    dom.updateAction?.addEventListener('click', handleUpdateAction);
+    dom.updateModal?.addEventListener('pointerdown', (event) => {
+      if (event.target === dom.updateModal) closeUpdateModal();
+    });
+
     dom.nameInput?.addEventListener('input', () => {
       dom.nameField.classList.remove('is-invalid');
       updatePickerState();
@@ -2946,6 +3101,14 @@
         return;
       }
 
+      if (dom.updateModal && !dom.updateModal.hidden) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeUpdateModal();
+        }
+        return;
+      }
+
       if (modifier && key === 'k') {
         event.preventDefault();
         if (!dom.searchInput.disabled) {
@@ -3108,6 +3271,8 @@
       return;
     }
 
+    bridge.onUpdateEvent?.(handleUpdateEvent);
+
     try {
       const data = await bridge.init();
       state.tracks = Array.isArray(data?.tracks) ? data.tracks : [];
@@ -3139,6 +3304,7 @@
       showToast('Не удалось загрузить музыкальную библиотеку', { type: 'error', duration: 5000 });
     } finally {
       setBootVisible(false);
+      setTimeout(() => checkForUpdates(), 1200);
     }
   }
 

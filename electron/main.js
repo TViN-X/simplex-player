@@ -10,6 +10,7 @@ const { MusicLibrary } = require('./library');
 const { SettingsStore } = require('./settings');
 const { PlaylistStore } = require('./playlists');
 const { registerAppScheme, installAppProtocol } = require('./protocol');
+const updater = require('./updater');
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 app.setName('Simplex player');
@@ -216,6 +217,12 @@ function sendScanProgress(sender, payload) {
     win.setProgressBar(Math.max(0.02, payload.done / payload.total));
   } else {
     win.setProgressBar(-1);
+  }
+}
+
+function sendUpdateEvent(payload) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send('update:event', payload);
   }
 }
 
@@ -471,6 +478,19 @@ function setupIpc() {
     return settings.save(patch);
   });
 
+  ipcMain.handle('app:version', () => app.getVersion());
+
+  ipcMain.handle('update:check', () => updater.check());
+
+  ipcMain.handle('update:download', () => updater.download());
+
+  ipcMain.handle('update:install', () => updater.install());
+
+  ipcMain.handle('update:open-release', (_event, url) => {
+    updater.openRelease(url);
+    return { ok: true };
+  });
+
   ipcMain.handle('window:control', (event, action) => {
     const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
     if (!win || win.isDestroyed()) return { maximized: false, mini: false };
@@ -542,6 +562,7 @@ async function bootstrap() {
   });
 
   setupIpc();
+  updater.init({ onEvent: sendUpdateEvent });
   createWindow();
 }
 

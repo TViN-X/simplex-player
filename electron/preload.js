@@ -17,6 +17,11 @@ const api = {
   reorderPlaylist: (id, trackIds) => ipcRenderer.invoke('playlist:reorder', { id, trackIds }),
   revealTrack: (id) => ipcRenderer.invoke('library:reveal', id),
   saveSettings: (patch) => ipcRenderer.invoke('settings:save', patch),
+  getVersion: () => ipcRenderer.invoke('app:version'),
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  openUpdateRelease: (url) => ipcRenderer.invoke('update:open-release', url),
   windowControl: (action) => ipcRenderer.invoke('window:control', action),
   getWindowState: () => ipcRenderer.invoke('window:state'),
   setMiniOnTop: (value) => ipcRenderer.invoke('window:set-mini-on-top', Boolean(value)),
@@ -36,6 +41,11 @@ const api = {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('scan:progress', listener);
     return () => ipcRenderer.removeListener('scan:progress', listener);
+  },
+  onUpdateEvent: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('update:event', listener);
+    return () => ipcRenderer.removeListener('update:event', listener);
   },
   platform: process.platform
 };
